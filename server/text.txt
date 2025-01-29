@@ -1,0 +1,211 @@
+const adminSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ["superadmin", "moderator"], default: "moderator" },
+  createdAt: { type: Date, default: Date.now },
+});
+
+const AdminModel = mongoose.model("Admin", adminSchema);
+
+const subscriptionSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    plan: { type: String, enum: ["basic", "premium", "pro"], required: true },
+    startDate: { type: Date, default: Date.now },
+    endDate: { type: Date, required: true },
+    isActive: { type: Boolean, default: true },
+  });
+  
+  const SubscriptionModel = mongoose.model("Subscription", subscriptionSchema);
+
+  const auditLogSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    action: { type: String, required: true }, // e.g., "login", "booking", "payment"
+    details: { type: String },
+    timestamp: { type: Date, default: Date.now },
+  });
+  
+  const AuditLogModel = mongoose.model("AuditLog", auditLogSchema);
+
+  
+  const feedbackAnalyticsSchema = new mongoose.Schema({
+    counsellorId: { type: mongoose.Schema.Types.ObjectId, ref: "Counsellor", required: true },
+    totalSessions: { type: Number, default: 0 },
+    averageRating: { type: Number, min: 0, max: 5, default: 0 },
+    positiveFeedbackCount: { type: Number, default: 0 },
+    negativeFeedbackCount: { type: Number, default: 0 },
+  });
+  
+  const FeedbackAnalyticsModel = mongoose.model("FeedbackAnalytics", feedbackAnalyticsSchema);
+
+  
+  const availabilityHistorySchema = new mongoose.Schema({
+    counsellorId: { type: mongoose.Schema.Types.ObjectId, ref: "Counsellor", required: true },
+    date: { type: Date, required: true },
+    changes: [
+      {
+        day: { type: String },
+        previous: { type: [String] },
+        updated: { type: [String] },
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
+  });
+  
+  const AvailabilityHistoryModel = mongoose.model(
+    "AvailabilityHistory",
+    availabilityHistorySchema
+  );
+
+  
+  const emergencyContactSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    contactName: { type: String, required: true },
+    relation: { type: String, required: true },
+    phoneNo: { type: String, required: true },
+    email: { type: String },
+    createdAt: { type: Date, default: Date.now },
+  });
+  
+  const EmergencyContactModel = mongoose.model("EmergencyContact", emergencyContactSchema);
+
+  
+  const trainingModuleSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    description: { type: String },
+    materials: [{ type: String }], // Links to PDF, video, etc.
+    requiredCompletion: { type: Boolean, default: true },
+    assignedCounsellors: [{ type: mongoose.Schema.Types.ObjectId, ref: "Counsellor" }],
+    createdAt: { type: Date, default: Date.now },
+  });
+  
+  const TrainingModuleModel = mongoose.model("TrainingModule", trainingModuleSchema);
+  
+
+
+
+  import React, { useContext, useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
+import { useNavigate } from "react-router-dom";
+import { UserContext } from '../Context/UserProvider.jsx';
+
+function Talk() {
+  const { user } = useContext(UserContext);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      toast("Please Login to talk");
+      navigate("/login");
+    }
+  }, [user, navigate]);
+
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (input.trim() === "") {
+      toast("Enter Something to talk");
+      return;
+    }
+
+    const userMessage = { sender: 'user', text: input };
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      if (!user || !user._id) {
+        toast("User ID is missing");
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SERVER_DOMAIN}/api/user/talk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: input, userId: user._id }),
+      });
+
+      const resData = await response.json();
+
+      if (resData.message) {
+        const botMessage = { sender: 'chatgpt', text: resData.message };
+        setMessages((prevMessages) => [...prevMessages, botMessage]);
+      } else {
+        toast('Failed to get a response from the bot');
+      }
+    } catch (error) {
+      console.error('Error fetching response:', error);
+      toast('Something went wrong. Please try again.');
+    }
+
+    setLoading(false);
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-purple-700 via-pink-500 to-red-600 min-h-screen flex items-center justify-center py-12 px-4 overflow-hidden">
+      <div className="w-full max-w-4xl bg-white shadow-xl rounded-lg p-8 space-y-8 border-2 border-gray-300">
+        
+        <div className="text-center text-3xl font-semibold text-gray-800 mb-6">
+          <h1>Chat with Your Best Friend</h1>
+        </div>
+
+        {/* Messages Area */}
+        <div className="h-[60vh] overflow-y-auto space-y-6 p-6 bg-gray-50 rounded-lg border border-gray-300 shadow-md">
+          {messages.map((msg, index) => (
+            <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-xs p-4 rounded-lg text-lg ${msg.sender === 'user' ? 'bg-blue-500 text-white shadow-lg' : 'bg-gray-300 text-gray-700 shadow-md'}`}
+              >
+                <span className="font-semibold">{msg.sender === 'user' ? 'You' : 'Best Friend'}:</span>
+                <p className="mt-2">{msg.text}</p>
+              </div>
+            </div>
+          ))}
+
+          {/* Typing Indicator */}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="p-4 bg-gray-300 text-gray-700 max-w-xs rounded-lg text-lg shadow-md">
+                <span className="font-semibold">Best Friend:</span>
+                <p>...typing</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Message Input */}
+        <form onSubmit={handleSubmit} className="flex items-center space-x-6">
+          <input
+            type="text"
+            value={input}
+            onChange={handleInputChange}
+            placeholder="Type your message..."
+            className="flex-1 p-4 text-lg bg-gray-100 text-gray-800 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            className="p-4 bg-blue-500 text-white rounded-xl font-semibold text-lg hover:bg-blue-600 transition duration-300 focus:outline-none"
+          >
+            Send
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default Talk;
+
+
+https://dribbble.com/shots/25482427-Dubai-Realty-Conceptual-Website-Design
+
+https://dribbble.com/shots/24320685-Telehealth-Website-Design
+
+https://dribbble.com/shots/24567295-Serenity-Mental-Health-Platform-Website

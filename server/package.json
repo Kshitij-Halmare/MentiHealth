@@ -1,0 +1,37 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+"scripts": {
+  "start": "node index.js"
+}
+,
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@huggingface/inference": "^2.8.1",
+    "bcryptjs": "^2.4.3",
+    "chart.js": "^3.9.1",
+    "cloudinary": "^2.5.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.8.4",
+    "multer": "^1.4.5-lts.1",
+    "nanoid": "^5.0.9",
+    "node-cron": "^3.0.3",
+    "nodemon": "^3.1.7",
+    "react-chartjs-2": "^3.3.0",
+    "resend": "^4.0.1",
+    "stripe": "^17.5.0"
+  },
+  "devDependencies": {
+    "@types/node-cron": "^3.0.11"
+  }
+}

@@ -1,0 +1,26 @@
+# Node modules
+node_modules/
+
+# Environment files
+.env
+
+# Logs
+*.log
+logs/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE files (e.g., VS Code)
+.vscode/
+
+# Coverage folder (for test coverage reports)
+coverage/
+
+# Build directories (if applicable)
+dist/
+build/
+
+# Temporary files
+*.tmp
