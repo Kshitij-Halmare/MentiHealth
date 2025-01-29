@@ -17,26 +17,24 @@ const app = express();
 // Middleware
 app.use(express.json()); // Parse JSON request bodies
 app.use(cookieParser()); // Parse cookies
-app.use(
-  cors({
-    origin: "https://mentihealth-1.onrender.com", // Replace with your frontend URL
-    methods: "GET,POST,PUT,DELETE",
-    credentials: true, // If using cookies or auth headers
-  })
-);
+const allowedOrigins = [
+  "https://mentihealth.onrender.com",
+  "https://mentihealth-1.onrender.com",
+  "http://localhost:3000", // Add this for local testing
+];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.some((o) => new RegExp(o).test(origin))) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 
 // Routes
