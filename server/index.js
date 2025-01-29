@@ -17,11 +17,13 @@ const app = express();
 // Middleware
 app.use(express.json()); // Parse JSON request bodies
 app.use(cookieParser()); // Parse cookies
-const allowedOrigins = [
-  "https://menti-health-kshitij-halmares-projects.vercel.app", 
-  /\.vercel\.app$/ ,
-  process.env.FRONTEND_URL
-];
+app.use(
+  cors({
+    origin: "https://mentihealth-1.onrender.com", // Replace with your frontend URL
+    methods: "GET,POST,PUT,DELETE",
+    credentials: true, // If using cookies or auth headers
+  })
+);
 
 app.use(
   cors({
