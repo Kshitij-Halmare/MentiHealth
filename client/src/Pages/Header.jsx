@@ -130,12 +130,6 @@ function Header() {
                 How it Works
               </li>
               <li
-                onClick={() => navigate("/contact")}
-                className="px-4 py-2 hover:bg-gray-100 cursor-pointer md:hidden block"
-              >
-                Contact
-              </li>
-              <li
                 onClick={() => navigate("/getCounsellor")}
                 className="px-4 py-2 hover:bg-gray-100 cursor-pointer md:hidden block"
               >
