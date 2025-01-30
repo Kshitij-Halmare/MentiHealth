@@ -55,8 +55,8 @@ counsellorRouter.post("/checkout-payment", async (req, res) => {
         mode: "payment",
         billing_address_collection: "auto",
         line_items,
-        success_url: `${process.env.FRONTEND_URL}success`,
-        cancel_url: `${process.env.FRONTEND_URL}cancel`,
+        success_url: `${process.env.FRONTEND_URL}/success`,
+        cancel_url: `${process.env.FRONTEND_URL}/cancel`,
       };
   
       // Create a new checkout session
