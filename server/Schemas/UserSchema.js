@@ -36,7 +36,7 @@ const UserSchema = new mongoose.Schema({
     ],
     isEmailVerified: {
         type: Boolean,
-        default: false
+        default: true
     },
     refresh_token: {
         type: String,
