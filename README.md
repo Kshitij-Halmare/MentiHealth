@@ -62,8 +62,14 @@ A full-stack web application that allows users to interact with an AI friend for
 
 ## 📸 Screenshots
 
-![Chatbot Interface](https://via.placeholder.com/600x300.png?text=Chatbot+Interface)  
-![Blog Section](https://via.placeholder.com/600x300.png?text=Blog+Section)  
+![Home Page](Screenshot_16-3-2025_192032_mentihealth-1.onrender.com.jpeg)  
+![Blog Section](Screenshot_16-3-2025_192124_mentihealth-1.onrender.com.jpeg)
+![Counsellor Details](Screenshot_16-3-2025_192319_mentihealth-1.onrender.com.jpeg)
+![Booking Page](Screenshot_16-3-2025_192352_mentihealth-1.onrender.com.jpeg)
+![Payment Page](Screenshot_16-3-2025_192433_checkout.stripe.com.jpeg)
+![Mental Health Insight](screenshot-1742134657662.png)
+
+
 
 ---
 
