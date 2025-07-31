@@ -25,6 +25,7 @@
     "js-cookie": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.534.0",
     "motion": "^11.18.0",
     "node-cron": "^3.0.3",
     "react": "^18.3.1",

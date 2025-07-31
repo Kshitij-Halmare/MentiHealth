@@ -37,7 +37,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-
 // Routes
 app.use("/blog", blogRouter);
 app.use("/api/user", userRouter);
@@ -66,3 +65,4 @@ mongoose
     console.error("Failed to connect to MongoDB:", err.message);
     process.exit(1); // Exit if MongoDB connection fails
   });
+  

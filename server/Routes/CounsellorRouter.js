@@ -1,7 +1,10 @@
 import express from "express";
-import Stripe from "stripe";
+import Stripe from 'stripe';
 import { AvailableSlots, CallsendConfirmationEmail, CancelSlot, Counsellors, getCounsellorById, getDetails, Login, RegisterCounsellor, SelectSlot } from "../Components/RegisterCounsellor.js";
 
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error("STRIPE_SECRET_KEY is not set in environment variables.");
+}
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Initialize Stripe with your secret key (ensure the key is in your environment variables)
