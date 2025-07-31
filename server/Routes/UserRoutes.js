@@ -200,6 +200,65 @@ userRouter.post("/resendOtp", resetOtp);
 userRouter.post("/getScore", getScore);
 userRouter.post("/changePassword", ChangePassword);
 
+// Background processing function
+async function processInBackground(userId, combinedInput, aiResponse, lastChat) {
+  try {
+    // Run summarization and sentiment analysis in parallel
+    const [summarization, sentimentResult] = await Promise.all([
+      client.summarization({
+        model: "facebook/bart-large-cnn",
+        inputs: `${combinedInput} ${aiResponse}`,
+        parameters: { max_length: 150, min_length: 50, do_sample: false },
+      }),
+      fetch(
+        "https://api-inference.huggingface.co/models/distilbert/distilbert-base-uncased-finetuned-sst-2-english",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.HfInference_data}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ inputs: `${combinedInput} ${aiResponse}` }),
+        }
+      ).then(res => res.json())
+    ]);
+
+    const summarizedText = summarization.summary_text;
+    let mentalHealthScore = 0;
+
+    if (sentimentResult[0][0].label === "POSITIVE") {
+      mentalHealthScore = Math.floor(sentimentResult[0][0].score * 100);
+    } else if (sentimentResult[0][0].label === "NEGATIVE") {
+      mentalHealthScore = Math.floor((1 - sentimentResult[0][0].score) * 100);
+    }
+
+    const interactionCount = (lastChat?.interactionCount || 0) + 1;
+    const cumulativeScore = (lastChat?.cumulativeScore || 0) + mentalHealthScore;
+    const averageMentalHealthScore = cumulativeScore / interactionCount;
+
+    if (lastChat) {
+      await ChatModel.findByIdAndUpdate(lastChat._id, {
+        mentalHealthInsights: summarizedText,
+        mentalHealthScore: averageMentalHealthScore,
+        interactionCount,
+        cumulativeScore,
+      });
+    } else {
+      const newChat = new ChatModel({
+        userId,
+        mentalHealthInsights: summarizedText,
+        mentalHealthScore: averageMentalHealthScore,
+        interactionCount,
+        cumulativeScore,
+      });
+      await newChat.save();
+    }
+  } catch (error) {
+    console.error("Background processing error:", error);
+    // Consider implementing a retry mechanism or dead letter queue here
+  }
+}
+
 userRouter.post("/talk", async (req, res) => {
   const { data, userId } = req.body;
 
@@ -208,12 +267,17 @@ userRouter.post("/talk", async (req, res) => {
   }
 
   try {
-    const lastChat = await ChatModel.findOne({ userId }).sort({ createdAt: -1 }).limit(1);
-    let previousSummary = lastChat ? lastChat.mentalHealthInsights : "";
-    let interactionCount = lastChat?.interactionCount || 0;
-    let cumulativeScore = lastChat?.cumulativeScore || 0;
+    // Get last chat data (with minimal fields for better performance)
+    const lastChat = await ChatModel.findOne({ userId })
+      .select('mentalHealthInsights interactionCount cumulativeScore')
+      .sort({ createdAt: -1 })
+      .limit(1)
+      .lean(); // Use lean() for better performance since we're only reading
 
+    const previousSummary = lastChat?.mentalHealthInsights || "";
     const combinedInput = `${previousSummary} ${data}`;
+
+    // Get AI response first
     const chatCompletion = await client.chatCompletion({
       model: "mistralai/Mistral-Nemo-Instruct-2407",
       messages: [
@@ -226,60 +290,38 @@ userRouter.post("/talk", async (req, res) => {
     });
 
     const aiResponse = chatCompletion.choices[0].message.content;
+
+    // Respond immediately to user
     res.json({ message: aiResponse });
 
-    const summarization = await client.summarization({
-      model: "facebook/bart-large-cnn",
-      inputs: `${combinedInput} ${aiResponse}`,
-      parameters: { max_length: 150, min_length: 50, do_sample: false },
+    // Process background tasks asynchronously (don't await)
+    setImmediate(() => {
+      processInBackground(userId, combinedInput, aiResponse, lastChat);
     });
 
-    const summarizedText = summarization.summary_text;
-    const sentimentAnalysisResponse = await fetch(
-      "https://api-inference.huggingface.co/models/distilbert/distilbert-base-uncased-finetuned-sst-2-english",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.HfInference_data}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ inputs: summarizedText }),
-      }
-    );
-
-    const sentimentResult = await sentimentAnalysisResponse.json();
-    let mentalHealthScore = 0;
-
-    if (sentimentResult[0][0].label === "POSITIVE") {
-      mentalHealthScore = Math.floor(sentimentResult[0][0].score * 100);
-    } else if (sentimentResult[0][0].label === "NEGATIVE") {
-      mentalHealthScore = Math.floor((1 - sentimentResult[0][0].score) * 100);
-    }
-
-    interactionCount += 1;
-    cumulativeScore += mentalHealthScore;
-    const averageMentalHealthScore = cumulativeScore / interactionCount;
-
-    if (lastChat) {
-      lastChat.mentalHealthInsights = summarizedText;
-      lastChat.mentalHealthScore = averageMentalHealthScore;
-      lastChat.interactionCount = interactionCount;
-      lastChat.cumulativeScore = cumulativeScore;
-      await lastChat.save();
-    } else {
-      const newChat = new ChatModel({
-        userId,
-        mentalHealthInsights: summarizedText,
-        mentalHealthScore: averageMentalHealthScore,
-        interactionCount,
-        cumulativeScore,
-      });
-      await newChat.save();
-    }
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ error: "An error occurred while processing the chat." });
   }
 });
+
+// Alternative approach using a queue system (if you have Redis available)
+/*
+const Queue = require('bull');
+const processQueue = new Queue('chat processing');
+
+processQueue.process(async (job) => {
+  const { userId, combinedInput, aiResponse, lastChat } = job.data;
+  await processInBackground(userId, combinedInput, aiResponse, lastChat);
+});
+
+// In your main route, replace setImmediate with:
+processQueue.add('process-chat', {
+  userId,
+  combinedInput,
+  aiResponse,
+  lastChat
+});
+*/
 
 export default userRouter;
