@@ -1,21 +1,40 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, Moon, Sun } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useNavigate } from "react-router-dom";
+import { UserContext } from '../Context/UserProvider.jsx';
 
 function Talk() {
-  // Simulated context and hooks for demo
-  const user = { _id: 'demo-user' };
-  const [messages, setMessages] = useState([
-    { sender: 'chatgpt', text: 'Hi there! I\'m here to listen and support you. How are you feeling today?' }
-  ]);
+  const { user } = useContext(UserContext);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [isUserLoading, setIsUserLoading] = useState(true);
+  const [darkMode, setDarkMode] = useState(false); // theme toggle
   const messagesEndRef = useRef(null);
 
   // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  // Check if user is logged in and redirect if not
+  useEffect(() => {
+    // Wait until the user data is loaded before redirecting
+    if (!isUserLoading) {
+      if (!user) {
+        toast.error("Please Login to Continue");
+        navigate("/login");
+      }
+    }
+  }, [user, isUserLoading, navigate]); // Add `isUserLoading` to prevent redirect before user data is ready
+
+  // Fetch user data (simulating user context loading)
+  useEffect(() => {
+    if (user) {
+      setIsUserLoading(false); // User data is loaded, stop the loading state
+    }
+  }, [user]);
 
   const handleInputChange = (e) => {
     setInput(e.target.value);
@@ -25,6 +44,7 @@ function Talk() {
     e.preventDefault();
 
     if (input.trim() === "") {
+      toast("Enter Something to talk");
       return;
     }
 
@@ -33,224 +53,186 @@ function Talk() {
     setInput('');
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      const responses = [
-        "I understand how you're feeling. That sounds really challenging.",
-        "Thank you for sharing that with me. Your feelings are completely valid.",
-        "It takes courage to open up about these things. I'm proud of you.",
-        "I'm here for you. Would you like to talk more about what's on your mind?",
-        "That's a really thoughtful perspective. How are you processing all of this?"
-      ];
-      const botMessage = { 
-        sender: 'chatgpt', 
-        text: responses[Math.floor(Math.random() * responses.length)]
-      };
-      setMessages((prevMessages) => [...prevMessages, botMessage]);
-      setLoading(false);
-    }, 1500);
+    try {
+      if (!user || !user._id) {
+        toast.error("User ID is missing");
+        navigate("/login");
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SERVER_DOMAIN}/api/user/talk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: input, userId: user._id }),
+      });
+
+      const resData = await response.json();
+
+      if (resData.message) {
+        const botMessage = { sender: 'chatgpt', text: resData.message };
+        setMessages((prevMessages) => [...prevMessages, botMessage]);
+      } else {
+        toast('Failed to get a response from the bot');
+      }
+    } catch (error) {
+      console.error('Error fetching response:', error);
+      toast('Something went wrong. Please try again.');
+    }
+
+    setLoading(false);
   };
 
-  const TypingIndicator = () => (
-    <div className="flex space-x-1">
-      <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-      <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-      <div className="w-2 h-2 bg-current rounded-full animate-bounce"></div>
-    </div>
-  );
-
   return (
-    <div className={`min-h-screen transition-all duration-500 ${
-      darkMode 
-        ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
-        : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
-    }`}>
-      {/* Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute top-20 left-20 w-72 h-72 rounded-full blur-3xl opacity-20 ${
-          darkMode ? 'bg-purple-500' : 'bg-blue-400'
-        }`}></div>
-        <div className={`absolute bottom-20 right-20 w-96 h-96 rounded-full blur-3xl opacity-20 ${
-          darkMode ? 'bg-pink-500' : 'bg-purple-400'
-        }`}></div>
-      </div>
-
-      <div className="relative min-h-screen flex items-center justify-center p-4">
-        <div className={`w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl backdrop-blur-xl border overflow-hidden transition-all duration-500 ${
-          darkMode 
-            ? 'bg-slate-800/80 border-slate-700/50' 
-            : 'bg-white/90 border-white/20'
-        }`}>
-          
-          {/* Header */}
-          <div className={`relative p-6 border-b backdrop-blur-sm ${
-            darkMode 
-              ? 'bg-slate-800/90 border-slate-700/50' 
-              : 'bg-white/80 border-gray-200/50'
-          }`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className={`relative p-3 rounded-2xl ${
-                  darkMode ? 'bg-purple-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'
-                }`}>
-                  <div className="absolute -top-1 -right-1">
-                    <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
-                  </div>
-                </div>
-                <div>
-                  <h1 className={`text-2xl font-bold ${
-                    darkMode ? 'text-white' : 'text-gray-800'
-                  }`}>
-                    OpenHeart
-                  </h1>
-                  <p className={`text-sm ${
-                    darkMode ? 'text-gray-400' : 'text-gray-600'
-                  }`}>
-                    Your compassionate companion
-                  </p>
-                </div>
-              </div>
-              
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`p-3 rounded-xl transition-all duration-300 hover:scale-110 ${
-                  darkMode 
-                    ? 'bg-slate-700 hover:bg-slate-600 text-yellow-400' 
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                }`}
-              >
-                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 h-[calc(85vh-140px)]">
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className={`flex items-end space-x-3 max-w-[80%] ${
-                  msg.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                }`}>
-                  {/* Avatar */}
-                  <div className={`flex-shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:scale-110 ${
-                    msg.sender === 'user'
-                      ? (darkMode ? 'bg-gradient-to-r from-purple-600 to-pink-600' : 'bg-gradient-to-r from-blue-500 to-purple-600')
-                      : (darkMode ? 'bg-slate-700' : 'bg-gray-100')
-                  }`}>
-                    {msg.sender === 'user' ? (
-                      <span className="text-white font-bold text-sm">U</span>
-                    ) : (
-                      <Heart className={`w-5 h-5 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-                    )}
-                  </div>
-
-                  {/* Message Bubble */}
-                  <div className={`relative px-6 py-4 rounded-2xl shadow-lg transition-all hover:shadow-xl ${
-                    msg.sender === 'user'
-                      ? (darkMode 
-                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' 
-                          : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white')
-                      : (darkMode 
-                          ? 'bg-slate-700 text-gray-100 border border-slate-600' 
-                          : 'bg-white text-gray-800 border border-gray-200')
-                  } ${
-                    msg.sender === 'user' ? 'rounded-br-md' : 'rounded-bl-md'
-                  }`}>
-                    <div className={`text-xs font-medium mb-2 opacity-70 ${
-                      msg.sender === 'user' ? 'text-white' : (darkMode ? 'text-gray-400' : 'text-gray-500')
-                    }`}>
-                      {msg.sender === 'user' ? 'You' : 'OpenHeart'}
-                    </div>
-                    <div className="text-sm leading-relaxed">{msg.text}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {/* Typing Indicator */}
-            {loading && (
-              <div className="flex justify-start animate-fadeIn">
-                <div className="flex items-end space-x-3 max-w-[80%]">
-                  <div className={`flex-shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg ${
-                    darkMode ? 'bg-slate-700' : 'bg-gray-100'
-                  }`}>
-                    <Heart className={`w-5 h-5 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-                  </div>
-                  <div className={`px-6 py-4 rounded-2xl rounded-bl-md shadow-lg ${
-                    darkMode ? 'bg-slate-700 text-gray-400' : 'bg-white text-gray-500 border border-gray-200'
-                  }`}>
-                    <div className="text-xs font-medium mb-2 opacity-70">OpenHeart</div>
-                    <TypingIndicator />
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input Area */}
-          <div className={`p-6 border-t backdrop-blur-sm ${
-            darkMode 
-              ? 'bg-slate-800/90 border-slate-700/50' 
-              : 'bg-white/80 border-gray-200/50'
-          }`}>
-            <div className="flex items-end space-x-4">
-              <div className="flex-1 relative">
-                <textarea
-                  value={input}
-                  onChange={handleInputChange}
-                  placeholder="Share what's on your mind..."
-                  className={`w-full px-4 py-3 rounded-2xl border-2 transition-all duration-300 resize-none focus:outline-none focus:ring-0 ${
-                    darkMode 
-                      ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400 focus:border-purple-500' 
-                      : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-500 focus:border-purple-400'
-                  }`}
-                  rows="1"
-                  disabled={loading}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit(e);
-                    }
-                  }}
-                />
-              </div>
-              <button
-                onClick={handleSubmit}
-                disabled={loading || input.trim() === ""}
-                className={`p-3 rounded-2xl transition-all duration-300 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${
-                  darkMode 
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700' 
-                    : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700'
-                } text-white shadow-lg hover:shadow-xl`}
-              >
-                <Send className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+    <div className={
+      darkMode
+        ? "bg-gradient-to-br from-red-900 via-red-800 to-black min-h-screen flex items-center justify-center py-8 px-2"
+        : "bg-gradient-to-br from-pink-100 via-orange-50 to-pink-200 min-h-screen flex items-center justify-center py-8 px-2"
+    }>
+      <div className={
+        "w-full max-w-2xl h-[80vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border " +
+        (darkMode ? "bg-red-950 border-red-900" : "bg-white border-pink-200")
+      }>
+        {/* Chat Header */}
+        <div className={
+          "flex items-center gap-3 px-6 py-4 sticky top-0 z-10 shadow-md " +
+          (darkMode
+            ? "bg-gradient-to-r from-red-900 via-red-800 to-black text-white"
+            : "bg-gradient-to-r from-pink-400 via-pink-500 to-orange-300 text-white")
+        }>
+          <div className={
+            "w-10 h-10 rounded-full flex items-center justify-center text-2xl " +
+            (darkMode ? "bg-white/20" : "bg-white/30")
+          }>💬</div>
+          <h1 className="text-xl font-bold tracking-wide drop-shadow flex-1">Open Heart Chat</h1>
+          <button
+            onClick={() => setDarkMode((d) => !d)}
+            className={
+              "rounded-full px-3 py-1 text-xs font-semibold border transition " +
+              (darkMode
+                ? "bg-red-900 border-red-700 text-white hover:bg-red-800"
+                : "bg-white border-pink-300 text-pink-600 hover:bg-pink-100")
+            }
+            title={darkMode ? "Switch to Light Theme" : "Switch to Dark Theme"}
+          >
+            {darkMode ? "Light" : "Dark"}
+          </button>
         </div>
-      </div>
 
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
+        {/* Messages Area */}
+        <div className={
+          "flex-1 overflow-y-auto px-4 py-6 space-y-4 " +
+          (darkMode ? "bg-gradient-to-b from-red-950 to-black" : "bg-gradient-to-b from-white to-pink-50")
+        }>
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className={`flex items-end gap-2 max-w-[80%]`}>
+                {msg.sender !== 'user' && (
+                  <div className={
+                    "w-8 h-8 rounded-full flex items-center justify-center text-lg shadow " +
+                    (darkMode ? "bg-red-800 text-white" : "bg-pink-200")
+                  }>
+                    🤖
+                  </div>
+                )}
+                <div
+                  className={
+                    "p-4 rounded-2xl text-base shadow transition-all " +
+                    (msg.sender === 'user'
+                      ? (darkMode
+                        ? "bg-gradient-to-br from-red-700 to-red-900 text-white rounded-br-none"
+                        : "bg-gradient-to-br from-pink-400 to-orange-300 text-white rounded-br-none")
+                      : (darkMode
+                        ? "bg-red-900 text-white rounded-bl-none border border-red-800"
+                        : "bg-pink-100 text-pink-900 rounded-bl-none border border-pink-200")
+                    )
+                  }
+                >
+                  <span className="block font-semibold text-xs mb-1 opacity-70">
+                    {msg.sender === 'user' ? 'You' : 'Best Friend'}
+                  </span>
+                  <span>{msg.text}</span>
+                </div>
+                {msg.sender === 'user' && (
+                  <div className={
+                    "w-8 h-8 rounded-full flex items-center justify-center text-lg shadow " +
+                    (darkMode ? "bg-red-800 text-white" : "bg-orange-200")
+                  }>
+                    <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" fill={darkMode ? "#991b1b" : "#fb7185"} />
+                      <text x="12" y="16" textAnchor="middle" fontSize="14" fill="#fff" fontFamily="Arial" dy="0">U</text>
+                    </svg>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Typing Indicator */}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="flex items-end gap-2 max-w-[80%]">
+                <div className={
+                  "w-8 h-8 rounded-full flex items-center justify-center text-lg shadow " +
+                  (darkMode ? "bg-red-800 text-white" : "bg-pink-200")
+                }>
+                  🤖
+                </div>
+                <div className={
+                  "p-4 rounded-2xl rounded-bl-none shadow " +
+                  (darkMode
+                    ? "bg-red-900 text-white border border-red-800"
+                    : "bg-pink-100 text-pink-900 border border-pink-200")
+                }>
+                  <span className="block font-semibold text-xs mb-1 opacity-70">Best Friend</span>
+                  <span className="italic opacity-70">...typing</span>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Message Input */}
+        <form
+          onSubmit={handleSubmit}
+          className={
+            "flex items-center gap-3 px-4 py-4 border-t sticky bottom-0 " +
+            (darkMode
+              ? "bg-red-950 border-red-900"
+              : "bg-white border-pink-200")
           }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-fadeIn {
-          animation: fadeIn 0.5s ease-out forwards;
-        }
-      `}</style>
+        >
+          <input
+            type="text"
+            value={input}
+            onChange={handleInputChange}
+            placeholder="Type your message..."
+            className={
+              "flex-1 p-3 rounded-xl border transition " +
+              (darkMode
+                ? "border-red-800 bg-red-900 text-white focus:ring-2 focus:ring-red-400"
+                : "border-pink-200 bg-pink-50 text-pink-900 focus:ring-2 focus:ring-pink-300")
+            }
+            autoFocus
+            disabled={loading}
+          />
+          <button
+            type="submit"
+            className={
+              "px-6 py-3 rounded-xl font-semibold text-white transition disabled:opacity-60 disabled:cursor-not-allowed " +
+              (darkMode
+                ? "bg-gradient-to-r from-red-700 to-red-900 hover:from-red-800 hover:to-red-950"
+                : "bg-gradient-to-r from-pink-400 to-orange-300 hover:from-pink-500 hover:to-orange-400")
+            }
+            disabled={loading || input.trim() === ""}
+          >
+            Send
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
