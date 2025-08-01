@@ -232,7 +232,7 @@ userRouter.post("/talk", async (req, res) => {
     let chatCompletion;
     try {
       chatCompletion = await client.chatCompletion({
-        model: "mistralai/Mistral-Nemo-Instruct-2407", // or use "mistralai/Mistral-7B-Instruct-v0.2" if this fails
+        model: "mistralai/Mistral-7B-Instruct-v0.2", // or use "mistralai/Mistral-7B-Instruct-v0.2" if this fails
         messages: [
           {
             role: "user",
