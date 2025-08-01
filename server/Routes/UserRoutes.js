@@ -230,22 +230,32 @@ userRouter.post("/talk", async (req, res) => {
 
     // Test model with a fallback in case Nemo is restricted
     let chatCompletion;
-    try {
-      chatCompletion = await client.chatCompletion({
-        model: "https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B", // or use "mistralai/Mistral-7B-Instruct-v0.2" if this fails
-        messages: [
-          {
-            role: "user",
-            content: `Assume you're my best friend. Previously: "${previousSummary}". Now: "${data}". Respond empathetically.`,
-          },
-        ],
-        max_tokens: 500,
-      });
-    } catch (apiError) {
-      console.error("[ERROR] Hugging Face chatCompletion failed:", apiError);
-      return res.status(500).json({ error: "Failed to fetch AI response from Hugging Face" });
-    }
+    // try {
+    //   chatCompletion = await client.chatCompletion({
+    //     model: "https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B", // or use "mistralai/Mistral-7B-Instruct-v0.2" if this fails
+    //     messages: [
+    //       {
+    //         role: "user",
+    //         content: `Assume you're my best friend. Previously: "${previousSummary}". Now: "${data}". Respond empathetically.`,
+    //       },
+    //     ],
+    //     max_tokens: 500,
+    //   });
+    // } catch (apiError) {
+    //   console.error("[ERROR] Hugging Face chatCompletion failed:", apiError);
+    //   return res.status(500).json({ error: "Failed to fetch AI response from Hugging Face" });
+    // }
+    chatCompletion = await client.chatCompletion({
+  endpointUrl: "https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B",
+  messages: [
+    { role: "user", content: "Explain quantum computing in simple words" }
+  ],
+  max_tokens: 300,
+  temperature: 0.6,
+});
 
+// console.log(response.choices[0].message);
+      
     if (!chatCompletion || !chatCompletion.choices || !chatCompletion.choices[0]) {
       console.error("[ERROR] Invalid chatCompletion response:", chatCompletion);
       return res.status(500).json({ error: "Invalid AI response from Hugging Face" });
