@@ -205,6 +205,8 @@ userRouter.post("/talk", async (req, res) => {
 
   console.log("[INFO] /talk endpoint called");
   console.log("[INFO] Request body:", { data, userId });
+    console.log("[DEBUG] Hugging Face token starts with:", process.env.HfInference_data?.slice(0, 10));
+
 
   if (!data) {
     console.warn("[WARN] No input message received");
