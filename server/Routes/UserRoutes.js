@@ -306,53 +306,179 @@ userRouter.post("/changePassword", ChangePassword);
 // });
 
 // Background processing function
-async function processInBackground(userId, combinedInput, aiResponse, lastChat) {
+// async function processInBackground(userId, combinedInput, aiResponse, lastChat) {
+//   try {
+//     // Run summarization and sentiment analysis in parallel
+//     const [summarization, sentimentResult] = await Promise.all([
+//       client.summarization({
+//         model: "facebook/bart-large-cnn",
+//         inputs: `${combinedInput} ${aiResponse}`,
+//         parameters: { max_length: 150, min_length: 50, do_sample: false },
+//       }),
+//       fetch(
+//         "https://api-inference.huggingface.co/models/distilbert/distilbert-base-uncased-finetuned-sst-2-english",
+//         {
+//           method: "POST",
+//           headers: {
+//             Authorization: `Bearer ${process.env.HF_INFERENCE_API_KEY}`, // ✅ Fixed env variable
+//             "Content-Type": "application/json",
+//           },
+//           body: JSON.stringify({ inputs: `${combinedInput} ${aiResponse}` }),
+//         }
+//       ).then(res => res.json())
+//     ]);
+
+//     // ✅ Fixed summarization response
+//     const summarizedText = Array.isArray(summarization) ? summarization[0]?.summary_text || "" : summarization.summary_text;
+
+//     // ✅ Safe sentiment check
+//     const sentiment = sentimentResult?.[0]?.[0];
+//     let mentalHealthScore = 0;
+//     if (sentiment?.label === "POSITIVE") {
+//       mentalHealthScore = Math.floor(sentiment.score * 100);
+//     } else if (sentiment?.label === "NEGATIVE") {
+//       mentalHealthScore = Math.floor((1 - sentiment.score) * 100);
+//     }
+
+//     // Calculate updated scores
+//     const interactionCount = (lastChat?.interactionCount || 0) + 1;
+//     const cumulativeScore = (lastChat?.cumulativeScore || 0) + mentalHealthScore;
+//     const averageMentalHealthScore = cumulativeScore / interactionCount;
+
+//     // Save chat insights
+//     if (lastChat) {
+//       await ChatModel.findByIdAndUpdate(lastChat._id, {
+//         mentalHealthInsights: summarizedText,
+//         mentalHealthScore: averageMentalHealthScore,
+//         interactionCount,
+//         cumulativeScore,
+//       });
+//     } else {
+//       const newChat = new ChatModel({
+//         userId,
+//         mentalHealthInsights: summarizedText,
+//         mentalHealthScore: averageMentalHealthScore,
+//         interactionCount,
+//         cumulativeScore,
+//       });
+//       await newChat.save();
+//     }
+//   } catch (error) {
+//     console.error("Background processing error:", error.response?.data || error.message);
+//   }
+// }
+
+// // Main chat route
+// userRouter.post("/talk", async (req, res) => {
+//   const { data, userId } = req.body;
+
+//   if (!data) {
+//     return res.status(400).json({ error: "Input message is required" });
+//   }
+
+//   try {
+//     // Get last chat data (only minimal fields for performance)
+//     const lastChat = await ChatModel.findOne({ userId })
+//       .select("mentalHealthInsights interactionCount cumulativeScore")
+//       .sort({ createdAt: -1 })
+//       .lean();
+
+//     const previousSummary = lastChat?.mentalHealthInsights || "";
+//     const combinedInput = `${previousSummary} ${data}`;
+
+//     // Get AI response
+//     const chatCompletion = await client.chatCompletion({
+//       model: "mistralai/Mistral-Nemo-Instruct-2407",
+//       messages: [
+//         {
+//           role: "user",
+//           content: `Assume you're my best friend. Previously: "${previousSummary}". Now: "${data}". Respond empathetically.`,
+//         },
+//       ],
+//       max_tokens: 500,
+//     });
+
+//     const aiResponse = chatCompletion.choices[0].message.content;
+
+//     // Send immediate response to user
+//     res.json({ message: aiResponse });
+
+//     // Background processing (async, no await)
+//     setImmediate(() => {
+//       processInBackground(userId, combinedInput, aiResponse, lastChat);
+//     });
+
+//   } catch (error) {
+//     console.error("Error in /talk route:", error.response?.data || error.message);
+//     res.status(500).json({ error: "An error occurred while processing the chat." });
+//   }
+// });
+userRouter.post("/talk", async (req, res) => {
+  const { data, userId } = req.body;
+
+  if (!data) {
+    return res.status(400).json({ error: "Input message is required" });
+  }
+
   try {
-    // Run summarization and sentiment analysis in parallel
-    const [summarization, sentimentResult] = await Promise.all([
-      client.summarization({
-        model: "facebook/bart-large-cnn",
-        inputs: `${combinedInput} ${aiResponse}`,
-        parameters: { max_length: 150, min_length: 50, do_sample: false },
-      }),
-      fetch(
-        "https://api-inference.huggingface.co/models/distilbert/distilbert-base-uncased-finetuned-sst-2-english",
+    const lastChat = await ChatModel.findOne({ userId }).sort({ createdAt: -1 }).limit(1);
+    let previousSummary = lastChat ? lastChat.mentalHealthInsights : "";
+    let interactionCount = lastChat?.interactionCount || 0;
+    let cumulativeScore = lastChat?.cumulativeScore || 0;
+
+    const combinedInput = ${previousSummary} ${data};
+    const chatCompletion = await client.chatCompletion({
+      model: "mistralai/Mistral-Nemo-Instruct-2407",
+      messages: [
         {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.HF_INFERENCE_API_KEY}`, // ✅ Fixed env variable
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ inputs: `${combinedInput} ${aiResponse}` }),
-        }
-      ).then(res => res.json())
-    ]);
+          role: "user",
+          content: Assume you're my best friend. Previously: "${previousSummary}". Now: "${data}". Respond empathetically.,
+        },
+      ],
+      max_tokens: 500,
+    });
 
-    // ✅ Fixed summarization response
-    const summarizedText = Array.isArray(summarization) ? summarization[0]?.summary_text || "" : summarization.summary_text;
+    const aiResponse = chatCompletion.choices[0].message.content;
+    res.json({ message: aiResponse });
 
-    // ✅ Safe sentiment check
-    const sentiment = sentimentResult?.[0]?.[0];
+    const summarization = await client.summarization({
+      model: "facebook/bart-large-cnn",
+      inputs: ${combinedInput} ${aiResponse},
+      parameters: { max_length: 150, min_length: 50, do_sample: false },
+    });
+
+    const summarizedText = summarization.summary_text;
+    const sentimentAnalysisResponse = await fetch(
+      "https://api-inference.huggingface.co/models/distilbert/distilbert-base-uncased-finetuned-sst-2-english",
+      {
+        method: "POST",
+        headers: {
+          Authorization: Bearer ${process.env.HfInference_data},
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ inputs: summarizedText }),
+      }
+    );
+
+    const sentimentResult = await sentimentAnalysisResponse.json();
     let mentalHealthScore = 0;
-    if (sentiment?.label === "POSITIVE") {
-      mentalHealthScore = Math.floor(sentiment.score * 100);
-    } else if (sentiment?.label === "NEGATIVE") {
-      mentalHealthScore = Math.floor((1 - sentiment.score) * 100);
+
+    if (sentimentResult[0][0].label === "POSITIVE") {
+      mentalHealthScore = Math.floor(sentimentResult[0][0].score * 100);
+    } else if (sentimentResult[0][0].label === "NEGATIVE") {
+      mentalHealthScore = Math.floor((1 - sentimentResult[0][0].score) * 100);
     }
 
-    // Calculate updated scores
-    const interactionCount = (lastChat?.interactionCount || 0) + 1;
-    const cumulativeScore = (lastChat?.cumulativeScore || 0) + mentalHealthScore;
+    interactionCount += 1;
+    cumulativeScore += mentalHealthScore;
     const averageMentalHealthScore = cumulativeScore / interactionCount;
 
-    // Save chat insights
     if (lastChat) {
-      await ChatModel.findByIdAndUpdate(lastChat._id, {
-        mentalHealthInsights: summarizedText,
-        mentalHealthScore: averageMentalHealthScore,
-        interactionCount,
-        cumulativeScore,
-      });
+      lastChat.mentalHealthInsights = summarizedText;
+      lastChat.mentalHealthScore = averageMentalHealthScore;
+      lastChat.interactionCount = interactionCount;
+      lastChat.cumulativeScore = cumulativeScore;
+      await lastChat.save();
     } else {
       const newChat = new ChatModel({
         userId,
@@ -364,52 +490,7 @@ async function processInBackground(userId, combinedInput, aiResponse, lastChat) 
       await newChat.save();
     }
   } catch (error) {
-    console.error("Background processing error:", error.response?.data || error.message);
-  }
-}
-
-// Main chat route
-userRouter.post("/talk", async (req, res) => {
-  const { data, userId } = req.body;
-
-  if (!data) {
-    return res.status(400).json({ error: "Input message is required" });
-  }
-
-  try {
-    // Get last chat data (only minimal fields for performance)
-    const lastChat = await ChatModel.findOne({ userId })
-      .select("mentalHealthInsights interactionCount cumulativeScore")
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const previousSummary = lastChat?.mentalHealthInsights || "";
-    const combinedInput = `${previousSummary} ${data}`;
-
-    // Get AI response
-    const chatCompletion = await client.chatCompletion({
-      model: "mistralai/Mistral-Nemo-Instruct-2407",
-      messages: [
-        {
-          role: "user",
-          content: `Assume you're my best friend. Previously: "${previousSummary}". Now: "${data}". Respond empathetically.`,
-        },
-      ],
-      max_tokens: 500,
-    });
-
-    const aiResponse = chatCompletion.choices[0].message.content;
-
-    // Send immediate response to user
-    res.json({ message: aiResponse });
-
-    // Background processing (async, no await)
-    setImmediate(() => {
-      processInBackground(userId, combinedInput, aiResponse, lastChat);
-    });
-
-  } catch (error) {
-    console.error("Error in /talk route:", error.response?.data || error.message);
+    console.error("Error:", error);
     res.status(500).json({ error: "An error occurred while processing the chat." });
   }
 });
