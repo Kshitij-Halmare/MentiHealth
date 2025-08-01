@@ -225,16 +225,29 @@ userRouter.post("/talk", async (req, res) => {
     console.log("[STEP 2] Combined input prepared:", combinedInput);
 
     console.log("[STEP 3] Sending request to Hugging Face chatCompletion...");
-    const chatCompletion = await client.chatCompletion({
-      model: "mistralai/Mistral-Nemo-Instruct-2407",
-      messages: [
-        {
-          role: "user",
-          content: `Assume you're my best friend. Previously: "${previousSummary}". Now: "${data}". Respond empathetically.`,
-        },
-      ],
-      max_tokens: 500,
-    });
+
+    // Test model with a fallback in case Nemo is restricted
+    let chatCompletion;
+    try {
+      chatCompletion = await client.chatCompletion({
+        model: "mistralai/Mistral-Nemo-Instruct-2407", // or use "mistralai/Mistral-7B-Instruct-v0.2" if this fails
+        messages: [
+          {
+            role: "user",
+            content: `Assume you're my best friend. Previously: "${previousSummary}". Now: "${data}". Respond empathetically.`,
+          },
+        ],
+        max_tokens: 500,
+      });
+    } catch (apiError) {
+      console.error("[ERROR] Hugging Face chatCompletion failed:", apiError);
+      return res.status(500).json({ error: "Failed to fetch AI response from Hugging Face" });
+    }
+
+    if (!chatCompletion || !chatCompletion.choices || !chatCompletion.choices[0]) {
+      console.error("[ERROR] Invalid chatCompletion response:", chatCompletion);
+      return res.status(500).json({ error: "Invalid AI response from Hugging Face" });
+    }
 
     const aiResponse = chatCompletion.choices[0].message.content;
     console.log("[INFO] AI response received:", aiResponse);
@@ -249,7 +262,7 @@ userRouter.post("/talk", async (req, res) => {
       parameters: { max_length: 150, min_length: 50, do_sample: false },
     });
 
-    const summarizedText = summarization.summary_text;
+    const summarizedText = summarization.summary_text || "";
     console.log("[INFO] Summarization result:", summarizedText);
 
     console.log("[STEP 6] Performing sentiment analysis...");
@@ -269,9 +282,9 @@ userRouter.post("/talk", async (req, res) => {
     console.log("[INFO] Sentiment analysis result:", sentimentResult);
 
     let mentalHealthScore = 0;
-    if (sentimentResult[0][0].label === "POSITIVE") {
+    if (sentimentResult?.[0]?.[0]?.label === "POSITIVE") {
       mentalHealthScore = Math.floor(sentimentResult[0][0].score * 100);
-    } else if (sentimentResult[0][0].label === "NEGATIVE") {
+    } else if (sentimentResult?.[0]?.[0]?.label === "NEGATIVE") {
       mentalHealthScore = Math.floor((1 - sentimentResult[0][0].score) * 100);
     }
     console.log("[INFO] Calculated mental health score:", mentalHealthScore);
@@ -279,6 +292,7 @@ userRouter.post("/talk", async (req, res) => {
     interactionCount += 1;
     cumulativeScore += mentalHealthScore;
     const averageMentalHealthScore = cumulativeScore / interactionCount;
+
     console.log("[INFO] Updated interaction count:", interactionCount);
     console.log("[INFO] Updated cumulative score:", cumulativeScore);
     console.log("[INFO] Average mental health score:", averageMentalHealthScore);
@@ -309,6 +323,7 @@ userRouter.post("/talk", async (req, res) => {
     res.status(500).json({ error: "An error occurred while processing the chat." });
   }
 });
+
 
 
 export default userRouter;
