@@ -232,7 +232,7 @@ userRouter.post("/talk", async (req, res) => {
     let chatCompletion;
     try {
       chatCompletion = await client.chatCompletion({
-        model: "mistralai/Mistral-7B-Instruct-v0.2", // or use "mistralai/Mistral-7B-Instruct-v0.2" if this fails
+        model: "https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B", // or use "mistralai/Mistral-7B-Instruct-v0.2" if this fails
         messages: [
           {
             role: "user",
