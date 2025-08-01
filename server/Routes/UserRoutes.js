@@ -426,13 +426,13 @@ userRouter.post("/talk", async (req, res) => {
     let interactionCount = lastChat?.interactionCount || 0;
     let cumulativeScore = lastChat?.cumulativeScore || 0;
 
-    const combinedInput = ${previousSummary} ${data};
+    const combinedInput = `${previousSummary} ${data}`;
     const chatCompletion = await client.chatCompletion({
       model: "mistralai/Mistral-Nemo-Instruct-2407",
       messages: [
         {
           role: "user",
-          content: Assume you're my best friend. Previously: "${previousSummary}". Now: "${data}". Respond empathetically.,
+          content: `Assume you're my best friend. Previously: "${previousSummary}". Now: "${data}". Respond empathetically.`,
         },
       ],
       max_tokens: 500,
@@ -443,7 +443,7 @@ userRouter.post("/talk", async (req, res) => {
 
     const summarization = await client.summarization({
       model: "facebook/bart-large-cnn",
-      inputs: ${combinedInput} ${aiResponse},
+      inputs: `${combinedInput} ${aiResponse}`,
       parameters: { max_length: 150, min_length: 50, do_sample: false },
     });
 
@@ -453,7 +453,7 @@ userRouter.post("/talk", async (req, res) => {
       {
         method: "POST",
         headers: {
-          Authorization: Bearer ${process.env.HfInference_data},
+          Authorization: `Bearer ${process.env.HfInference_data}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ inputs: summarizedText }),
@@ -494,6 +494,7 @@ userRouter.post("/talk", async (req, res) => {
     res.status(500).json({ error: "An error occurred while processing the chat." });
   }
 });
+
 
 
 // Alternative approach using a queue system (if you have Redis available)
