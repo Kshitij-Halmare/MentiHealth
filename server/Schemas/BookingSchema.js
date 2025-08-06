@@ -15,6 +15,11 @@ const bookingSchema = new mongoose.Schema(
     },
     createdAt: { type: Date, default: Date.now },
     numberOfMeetings: { type: Number, default: 1 }, // Field to track the number of meetings
+    status: {
+      type: String,
+      enum: ['active', 'completed', 'cancelled'],
+      default: 'active'
+    },
   },
   {
     timestamps: true,
@@ -23,6 +28,8 @@ const bookingSchema = new mongoose.Schema(
 
 // Create an index for sessionDate to make date-based queries more efficient
 bookingSchema.index({ sessionDate: 1, sessionTime: 1 });
+// Add index for faster queries
+bookingSchema.index({ sessionDate: 1, status: 1 });
 
 const BookingModel = mongoose.model("Booking", bookingSchema);
 

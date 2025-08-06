@@ -35,8 +35,8 @@ function Review() {
         const newReview = {
           comment: review, // The text of the review
           userId: user._id, // ID of the user who added the review
-          userId:{
-            name:user.email
+          user: {
+            name: user.email
           }, // Optional: Include user's name if available
           type: "Website", // Example type, adjust as needed
           createdAt: new Date().toISOString(), // Current timestamp

@@ -407,39 +407,90 @@ export async function CancelSlot(req, res) {
     }
 }
 
-
 // Function to reset past bookings
 async function resetPastBookings() {
     try {
-      const currentTime = new Date();
-  
-      // Fetch all counsellors from the database
-      const counsellors = await CounsellorModel.find();
-  
-      for (const counsellor of counsellors) {
-        // Loop through each day in counsellor's availability
-        for (const day in counsellor.availability) {
-          if (Array.isArray(counsellor.availability[day])) {
-            // Process each slot
-            counsellor.availability[day].forEach((slot) => {
-              const slotDateTime = new Date(`${new Date().toLocaleDateString()} ${slot.time}`);
-              if (slotDateTime < currentTime && slot.isBooked) {
-                slot.isBooked = false; // Reset the booking
-              }
-            });
-          }
+        const now = new Date();
+        
+        // Find all expired bookings
+        const expiredBookings = await BookingModel.find({
+            $or: [
+                { sessionDate: { $lt: now } },
+                {
+                    sessionDate: now,
+                    sessionTime: {
+                        $lt: now.toLocaleTimeString('en-US', { 
+                            hour: 'numeric',
+                            hour12: true 
+                        })
+                    }
+                }
+            ]
+        });
+
+        // Process each expired booking
+        for (const booking of expiredBookings) {
+            const counsellor = await CounsellorModel.findById(booking.counsellorId);
+            if (counsellor) {
+                // Get day name from booking date
+                const dayName = booking.sessionDate.toLocaleString('en-US', { weekday: 'long' });
+                
+                // Find and reset the slot
+                if (counsellor.availability[dayName]) {
+                    const slot = counsellor.availability[dayName].find(
+                        s => s.time === booking.sessionTime
+                    );
+                    if (slot) {
+                        slot.isBooked = false;
+                    }
+                }
+                await counsellor.save();
+            }
+
+            // Move booking to history and remove from active bookings
+            await BookingModel.findByIdAndUpdate(booking._id, 
+                { status: 'completed' },
+                { new: true }
+            );
         }
-  
-        // Save the updated availability back to the database
-        await counsellor.save();
-      }
-  
-      console.log("Successfully reset past bookings!");
+
+        console.log(`Reset ${expiredBookings.length} expired bookings`);
     } catch (error) {
-      console.error("Error resetting past bookings:", error);
+        console.error("Error resetting past bookings:", error.message);
     }
-  }
+}
+
+// Run every minute
 cron.schedule('* * * * *', resetPastBookings);
+
+// Additional helper to check and reset slots daily
+cron.schedule('0 0 * * *', async () => {
+    try {
+        const counsellors = await CounsellorModel.find();
+        const now = new Date();
+        const today = now.toLocaleString('en-US', { weekday: 'long' });
+
+        for (const counsellor of counsellors) {
+            // Reset all past slots for today
+            if (counsellor.availability[today]) {
+                counsellor.availability[today].forEach(slot => {
+                    const [hour, period] = slot.time.split(' ');
+                    let slotHour = parseInt(hour);
+                    if (period === 'PM' && slotHour !== 12) slotHour += 12;
+                    if (period === 'AM' && slotHour === 12) slotHour = 0;
+                    
+                    if (slotHour < now.getHours()) {
+                        slot.isBooked = false;
+                    }
+                });
+                await counsellor.save();
+            }
+        }
+        console.log('Daily slot reset completed');
+    } catch (error) {
+        console.error('Error in daily slot reset:', error.message);
+    }
+});
 
 async function sendMeetingLinksForUpcomingMeetings() {
     try {

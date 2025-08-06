@@ -22,6 +22,7 @@ const allowedOrigins = [
   "https://mentihealth-1.onrender.com",
   "http://localhost:3000", // Add this for local testing
   "http://localhost:5000",
+  'http://localhost:5173'
 ];
 
 const corsOptions = {

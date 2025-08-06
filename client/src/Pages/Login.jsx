@@ -29,6 +29,7 @@ function Login() {
 
         try {
             // Send login request to the backend
+            console.log("Login Data:", import.meta.env.VITE_SERVER_DOMAIN);  
             const response = await fetch(`${import.meta.env.VITE_SERVER_DOMAIN}/api/user/login`, {
                 method: "POST",
                 headers: {
