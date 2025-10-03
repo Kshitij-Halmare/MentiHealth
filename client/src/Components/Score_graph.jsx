@@ -9,6 +9,7 @@ function ScoreCard() {
 
   useEffect(() => {
     if (user && user._id) {
+      console.log("yes");
       const getScore = async () => {
         const response = await fetch(`${import.meta.env.VITE_SERVER_DOMAIN}/api/user/getScore`, {
           method: "POST",
@@ -17,6 +18,7 @@ function ScoreCard() {
           },
           body: JSON.stringify({ userId: user._id }),
         });
+        console.log(getScore);
 
         const resData = await response.json();
         console.log("Received Data:", resData);
