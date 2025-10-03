@@ -451,6 +451,19 @@ userRouter.post("/talk", async (req, res) => {
 
     // 3. Send response
     res.json({ message: aiResponse });
+      try {
+      await processBackgroundTasks(
+        userId, 
+        data, 
+        aiResponse, 
+        previousSummary, 
+        interactionCount, 
+        cumulativeScore
+      );
+    } catch (bgError) {
+      console.error("Background processing failed:", bgError.message);
+    }
+
 
     // ... (rest of your background processing code)
 
