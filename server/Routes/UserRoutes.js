@@ -396,6 +396,9 @@ userRouter.post("/talk", async (req, res) => {
     // 1. Get conversation context
     const lastChat = await ChatModel.findOne({ userId }).sort({ createdAt: -1 });
     const previousSummary = lastChat?.mentalHealthInsights || "";
+      //     let previousSummary = lastChat?.mentalHealthInsights || "";
+    let interactionCount = lastChat?.interactionCount || 0;
+    let cumulativeScore = lastChat?.cumulativeScore || 0;
     console.log(previousSummary);
       console.log(lastChat);
     // 2. Generate natural counselor response
