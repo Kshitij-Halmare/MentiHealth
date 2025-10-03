@@ -396,7 +396,8 @@ userRouter.post("/talk", async (req, res) => {
     // 1. Get conversation context
     const lastChat = await ChatModel.findOne({ userId }).sort({ createdAt: -1 });
     const previousSummary = lastChat?.mentalHealthInsights || "";
-
+    console.log(previousSummary);
+      console.log(lastChat);
     // 2. Generate natural counselor response
     let aiResponse;
     try {
@@ -429,7 +430,7 @@ userRouter.post("/talk", async (req, res) => {
 
       const result = await response.json();
       aiResponse = result.choices?.[0]?.message?.content;
-      
+      console.log(aiResponse);
       // Force natural responses (remove all technical artifacts)
       aiResponse = aiResponse
         .replace(/<think>.*?<\/think>/gs, '') // Remove thinking tags
