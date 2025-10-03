@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'; // Assuming you're using React Router f
 function ScoreCard() {
   const { user } = useContext(UserContext);
   const [scoreData, setScoreData] = useState([]);
-
+  console.log("incomoing");
   useEffect(() => {
     if (user && user._id) {
       console.log("yes");
@@ -32,7 +32,7 @@ function ScoreCard() {
       };
       getScore();
     }
-  }, []);
+  }, [user]);
 
   return (
     <div className="container mx-auto p-6">
