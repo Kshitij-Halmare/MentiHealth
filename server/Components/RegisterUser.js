@@ -440,6 +440,7 @@ export async function getScore(req,res){
     console.log(userId);
     try{
         const data=await ChatModel.find({userId:userId});
+        console.log(data);
         return res.status(200).json({
             message:"retreived SuccessFully",
             data:data,
